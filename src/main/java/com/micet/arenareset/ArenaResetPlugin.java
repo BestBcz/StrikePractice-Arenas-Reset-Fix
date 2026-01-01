@@ -34,6 +34,7 @@ public class ArenaResetPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        getServer().getPluginManager().registerEvents(new GlitchFixer(this), this);
         Plugin we = getServer().getPluginManager().getPlugin("WorldEdit");
         if (we instanceof WorldEditPlugin) {
             this.worldEdit = (WorldEditPlugin) we;
