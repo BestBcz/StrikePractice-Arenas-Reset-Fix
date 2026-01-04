@@ -16,7 +16,7 @@ public class GlitchFixer implements Listener {
     private final JavaPlugin plugin;
 
     // 设置触发修复的距离阈值 (方块)
-    private static final double FIX_DISTANCE = 50.0;
+    private static final double FIX_DISTANCE = 15.0;
     private static final double FIX_DISTANCE_SQ = FIX_DISTANCE * FIX_DISTANCE;
 
     public GlitchFixer(JavaPlugin plugin) {

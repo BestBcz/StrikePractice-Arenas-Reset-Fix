@@ -70,7 +70,7 @@ public class EntityFishingHook extends Entity {
         this.motY = (-MathHelper.sin((this.pitch / 180.0f) * 3.1415927f)) * fPower;
 
         //
-        this.c(this.motX, this.motY, this.motZ, 1.65f, 0.0f);
+        this.c(this.motX, this.motY, this.motZ, 1.68f, 0.0f);
     }
 
     @Override // net.minecraft.server.v1_7_R4.Entity
