@@ -22,7 +22,6 @@ dependencies {
     compileOnly name: 'WorldEdit'
     compileOnly name: 'StrikePractice'
     compileOnly name: 'ProtocolLib 1.7.10'
-    compileOnly name: 'ga.strikepractice:strikepractice-api'
 
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
