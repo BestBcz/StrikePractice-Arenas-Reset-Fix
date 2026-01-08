@@ -102,8 +102,12 @@ public class MisplaceManager implements Listener {
         kitDelaySettings.put("debuff", 1);
     }
 
-    //核心事件监听
+    // 获取指定玩家的 Misplace 延迟值 (供指令调用)
+    public int getPlayerDelay(Player player) {
+        return playerKitDelayCache.getOrDefault(player.getUniqueId(), 0);
+    }
 
+    //核心事件监听
     @EventHandler(priority = EventPriority.MONITOR)
     public void onKitSelect(KitSelectEvent event) {
         BattleKit kit = event.getKit();
