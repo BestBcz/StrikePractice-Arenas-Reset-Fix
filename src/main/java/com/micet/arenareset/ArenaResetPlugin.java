@@ -22,6 +22,7 @@ import java.io.File;
 
 public class ArenaResetPlugin extends JavaPlugin implements Listener {
     private MisplaceManager misplaceManager;
+    private SmoothCpsManager smoothCpsManager; // [新增]
     private WorldEditPlugin worldEdit;
 
     // 设置延迟时间 (4秒 = 80 ticks)
@@ -45,6 +46,15 @@ public class ArenaResetPlugin extends JavaPlugin implements Listener {
         // 1. 初始化 Misplace 功能模块
         this.misplaceManager = new MisplaceManager(this);
         getLogger().info("Misplace 模块已加载！默认关闭，使用 /misplace 开启。");
+
+        // 3. 初始化平滑 CPS 限制模块 (ProtocolLib)
+        if (getServer().getPluginManager().getPlugin("ProtocolLib") != null) {
+            // 构造函数里会自动注册 PacketListener 和 Bukkit Listener
+            this.smoothCpsManager = new SmoothCpsManager(this);
+            getLogger().info("SmoothCPS 模块已加载！(对刀时限制CPS，Combo时解除限制)");
+        } else {
+            getLogger().warning("未找到 ProtocolLib，SmoothCPS 模块无法启动！");
+        }
 
         // 2. 注册指令
         getCommand("saveallarenas").setExecutor(new ArenaSaver(this));
