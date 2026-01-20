@@ -169,4 +169,10 @@ public class ArenaResetPlugin extends JavaPlugin implements Listener {
             getLogger().warning("重置竞技场时出错: " + file.getName());
         }
     }
+    @Override
+    public void onDisable() {
+        if (misplaceManager != null) {
+            misplaceManager.onDisable(); // 关闭线程池
+        }
+    }
 }

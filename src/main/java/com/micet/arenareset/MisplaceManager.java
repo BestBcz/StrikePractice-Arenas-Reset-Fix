@@ -17,7 +17,7 @@ import ga.strikepractice.events.KitSelectEvent;
 // ------------------------------
 
 import org.bukkit.Bukkit;
-import org.bukkit.World; // 导入 World
+import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -31,7 +31,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*; // 引入并发包
 import java.util.logging.Level;
 
 public class MisplaceManager implements Listener {
@@ -42,12 +42,19 @@ public class MisplaceManager implements Listener {
     private static final long ATTACK_WINDOW_MS = 2000;
     private static final long DAMAGE_WINDOW_MS = 500;
 
-    private final Map<UUID, Integer> playerKitDelayCache = new ConcurrentHashMap<>();
+    // 缓存现在存储 Double
+    private final Map<UUID, Double> playerKitDelayCache = new ConcurrentHashMap<>();
 
     private final Map<UUID, Long> lastAttackTime = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastDamageTime = new ConcurrentHashMap<>();
-    private final Map<UUID, Integer> currentDelayMap = new ConcurrentHashMap<>();
-    private final Map<String, Integer> kitDelaySettings = new HashMap<>();
+
+    //  当前延迟也是 Double
+    private final Map<UUID, Double> currentDelayMap = new ConcurrentHashMap<>();
+    // 设置也是 Double
+    private final Map<String, Double> kitDelaySettings = new HashMap<>();
+
+    //  毫秒级线程调度池
+    private final ScheduledExecutorService packetScheduler = Executors.newScheduledThreadPool(4);
 
     private static final List<PacketType> MOVE_PACKETS = Arrays.asList(
             PacketType.Play.Server.REL_ENTITY_MOVE,
@@ -89,24 +96,16 @@ public class MisplaceManager implements Listener {
             }
         }.runTaskTimerAsynchronously(plugin, 1200L, 1200L);
 
-        // 2. [核心修复] 同步状态检查任务
+        // 2. 同步状态检查任务 (5秒一次)
         new BukkitRunnable() {
             @Override
             public void run() {
                 if (!isEnabled) return;
-
-                // --- 修复开始：绕过 ambiguous method call 错误 ---
-                // 不直接调用 Bukkit.getOnlinePlayers()，而是遍历世界
                 for (World world : Bukkit.getWorlds()) {
                     for (Player player : world.getPlayers()) {
-                        // ----------------------------------------------
-
                         UUID uuid = player.getUniqueId();
-
-                        // 如果缓存里已经有这个玩家了，跳过
                         if (playerKitDelayCache.containsKey(uuid)) continue;
 
-                        // 检查玩家是否在战斗中 (利用 API)
                         if (StrikePractice.getAPI().getFight(player) != null) {
                             try {
                                 Object kitObj = StrikePractice.getAPI().getKit(player);
@@ -123,20 +122,26 @@ public class MisplaceManager implements Listener {
         }.runTaskTimer(plugin, 100L, 100L);
     }
 
-    private void setupKitSettings() {
-        kitDelaySettings.put("nodebuff", 1);
-        kitDelaySettings.put("boxing", 2);
-        kitDelaySettings.put("builduhc", 0);
-        kitDelaySettings.put("sumo", 0);
-        kitDelaySettings.put("combo", 0);
-        kitDelaySettings.put("gapple", 1);
-        kitDelaySettings.put("diamond", 0);
-        kitDelaySettings.put("enderpot", 1);
-        kitDelaySettings.put("debuff", 1);
+    // 插件卸载时关闭线程池，防止内存泄漏
+    public void onDisable() {
+        packetScheduler.shutdownNow();
     }
 
-    public int getPlayerDelay(Player player) {
-        return playerKitDelayCache.getOrDefault(player.getUniqueId(), 0);
+    private void setupKitSettings() {
+        kitDelaySettings.put("nodebuff", 1.4); //70ms
+        kitDelaySettings.put("boxing", 2.3);   //115ms
+        kitDelaySettings.put("builduhc", 0.0);
+        kitDelaySettings.put("sumo", 0.0);
+        kitDelaySettings.put("combo", 0.0);
+        kitDelaySettings.put("gapple", 1.4);
+        kitDelaySettings.put("diamond", 0.0);
+        kitDelaySettings.put("enderpot", 1.4);
+        kitDelaySettings.put("debuff", 1.4);
+    }
+
+    // [修改] 返回类型改为 double
+    public double getPlayerDelay(Player player) {
+        return playerKitDelayCache.getOrDefault(player.getUniqueId(), 0.0);
     }
 
     // --- 事件监听 ---
@@ -181,17 +186,15 @@ public class MisplaceManager implements Listener {
         }
 
         if (kit.isElo()) {
-            playerKitDelayCache.put(player.getUniqueId(), 0);
+            playerKitDelayCache.put(player.getUniqueId(), 0.0);
             return;
         }
 
         String kitName = kit.getName().toLowerCase();
-        int delay = kitDelaySettings.getOrDefault(kitName, 1);
+        double delay = kitDelaySettings.getOrDefault(kitName, 1.0); // 默认 1.0
 
         playerKitDelayCache.put(player.getUniqueId(), delay);
     }
-
-    // --- 战斗状态监听 ---
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCombat(EntityDamageByEntityEvent event) {
@@ -207,7 +210,7 @@ public class MisplaceManager implements Listener {
         }
     }
 
-    // --- 数据包处理 ---
+    // --- 数据包处理 (毫秒级核心) ---
 
     private void handleMovePacket(PacketEvent event) {
         final Player receiver = event.getPlayer();
@@ -229,32 +232,41 @@ public class MisplaceManager implements Listener {
             Player attacker = (Player) movingEntity;
             UUID attackerUUID = attacker.getUniqueId();
 
-            int maxDelayForThisKit = playerKitDelayCache.getOrDefault(attackerUUID, 0);
-            int targetDelay = isInComboState(attacker) ? maxDelayForThisKit : 0;
+            // 获取目标延迟 (Double)
+            double maxDelayForThisKit = playerKitDelayCache.getOrDefault(attackerUUID, 0.0);
+            double targetDelay = isInComboState(attacker) ? maxDelayForThisKit : 0.0;
 
-            int currentDelay = currentDelayMap.getOrDefault(attackerUUID, 0);
+            // 平滑过渡
+            double currentDelay = currentDelayMap.getOrDefault(attackerUUID, 0.0);
+            double step = 0.25; // 每次发包变化 0.25 tick
+
             if (currentDelay < targetDelay) {
-                currentDelay++;
+                currentDelay = Math.min(currentDelay + step, targetDelay);
             } else if (currentDelay > targetDelay) {
-                currentDelay--;
+                currentDelay = Math.max(currentDelay - step, targetDelay);
             }
             currentDelayMap.put(attackerUUID, currentDelay);
 
-            if (currentDelay > 0) {
+            // 3. 执行延迟 (将 ticks 转换为 毫秒)
+            if (currentDelay > 0.05) { // 忽略极小的延迟
                 if (!event.isCancelled()) {
                     event.setCancelled(true);
                     final PacketContainer packet = event.getPacket().deepClone();
 
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                ProtocolLibrary.getProtocolManager().sendServerPacket(receiver, packet, false);
-                            } catch (InvocationTargetException e) {
-                                plugin.getLogger().log(Level.WARNING, "Error sending misplaced packet", e);
-                            }
+                    // 核心算法：Tick -> Milliseconds
+                    // 1 Tick = 50ms
+                    // 1.5 Ticks = 75ms
+                    long delayMs = (long) (currentDelay * 50.0);
+
+                    // 使用 Java 原生调度器替代 BukkitRunnable
+                    packetScheduler.schedule(() -> {
+                        try {
+                            // 注意：这里是在异步线程发送包，ProtocolLib 支持线程安全发送
+                            ProtocolLibrary.getProtocolManager().sendServerPacket(receiver, packet, false);
+                        } catch (InvocationTargetException e) {
+                            plugin.getLogger().log(Level.WARNING, "Error sending misplaced packet", e);
                         }
-                    }.runTaskLater(plugin, currentDelay);
+                    }, delayMs, TimeUnit.MILLISECONDS);
                 }
             }
         }

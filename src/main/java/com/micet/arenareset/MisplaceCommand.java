@@ -51,13 +51,16 @@ public class MisplaceCommand implements CommandExecutor {
         // 尝试作为玩家名进行查询
         Player target = Bukkit.getPlayer(subCommand);
         if (target != null) {
-            int delay = manager.getPlayerDelay(target);
+            // [修正] 这里改为 double 以匹配 Manager 的返回值
+            double delay = manager.getPlayerDelay(target);
+
             sender.sendMessage(ChatColor.GREEN + "查询结果: " + ChatColor.WHITE + target.getName());
             if (delay > 0) {
-                sender.sendMessage(ChatColor.GREEN + "当前 Misplace 设置: " + ChatColor.YELLOW + delay + " ticks");
+                // [优化] 输出时保留一位小数，例如 1.5 ticks
+                sender.sendMessage(ChatColor.GREEN + "当前 Misplace 设置: " + ChatColor.YELLOW + String.format("%.1f", delay) + " ticks");
                 sender.sendMessage(ChatColor.GRAY + "(注意: 此数值仅在连击/Combo状态下生效)");
             } else {
-                sender.sendMessage(ChatColor.RED + "当前 Misplace 设置: 0 (未开启/无Kit/排位模式)");
+                sender.sendMessage(ChatColor.RED + "当前 Misplace 设置: 0.0 (未开启/无Kit/排位模式)");
             }
             return true;
         }

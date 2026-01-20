@@ -25,7 +25,7 @@ public class SmoothCpsManager implements Listener {
     private final JavaPlugin plugin;
 
     // --- 限制设置 ---
-    private static final int MAX_CPS = 12; // 限制为 12 CPS
+    private static final int MAX_CPS = 20; // 限制为 12 CPS
     private static final long MIN_DELAY_MS = 1000 / MAX_CPS;
 
     // --- Combo 判定阈值 (参考 MisplaceManager) ---
