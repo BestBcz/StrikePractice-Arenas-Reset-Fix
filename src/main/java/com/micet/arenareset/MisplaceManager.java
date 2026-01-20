@@ -136,7 +136,7 @@ public class MisplaceManager implements Listener {
         kitDelaySettings.put("gapple", 1.4);
         kitDelaySettings.put("diamond", 0.0);
         kitDelaySettings.put("enderpot", 1.4);
-        kitDelaySettings.put("debuff", 1.4);
+        kitDelaySettings.put("debuff", 0.0);
     }
 
     // [修改] 返回类型改为 double
