@@ -23,7 +23,12 @@ import java.io.File;
 import java.util.List;
 
 public class ArenaSaver implements CommandExecutor {
-
+      //BROKEN!!!!!!!!!!!!!!!
+      //BROKEN!!!!!!!!!!!!!!!
+      //BROKEN!!!!!!!!!!!!!!!
+      //BROKEN!!!!!!!!!!!!!!!
+      //BROKEN!!!!!!!!!!!!!!!
+      //BROKEN!!!!!!!!!!!!!!!
     private final JavaPlugin plugin;
 
     public ArenaSaver(JavaPlugin plugin) {
@@ -33,7 +38,7 @@ public class ArenaSaver implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("arenareset.admin")) {
-            sender.sendMessage("§c你没有权限。");
+            sender.sendMessage("§cno permission。");
             return true;
         }
 
@@ -41,16 +46,16 @@ public class ArenaSaver implements CommandExecutor {
         List<Arena> arenas = api.getArenas();
 
         if (arenas == null || arenas.isEmpty()) {
-            sender.sendMessage("§c未找到任何竞技场数据！");
+            sender.sendMessage("§cNot found any arena data！");
             return true;
         }
 
-        sender.sendMessage("§e开始批量导出 " + arenas.size() + " 个竞技场...");
-        sender.sendMessage("§7(正在重新校准坐标，确保粘贴位置准确)");
+        sender.sendMessage("§eStart saving " + arenas.size() + " arenas...");
+        sender.sendMessage("§7(Relocating pos，sure your paste is right!)");
 
         WorldEditPlugin we = (WorldEditPlugin) Bukkit.getPluginManager().getPlugin("WorldEdit");
         if (we == null) {
-            sender.sendMessage("§c错误：未找到 WorldEdit 插件！");
+            sender.sendMessage("§cError：Not Found WorldEdit Plugin！");
             return true;
         }
 
@@ -82,8 +87,8 @@ public class ArenaSaver implements CommandExecutor {
         @Override
         public void run() {
             if (index >= queue.size()) {
-                sender.sendMessage("§a批量导出全部完成！");
-                sender.sendMessage("§7成功: §a" + success + " §7失败: §c" + fail);
+                sender.sendMessage("§aAll Done！");
+                sender.sendMessage("§7success: §a" + success + " §7fail: §c" + fail);
                 this.cancel();
                 return;
             }
@@ -111,7 +116,7 @@ public class ArenaSaver implements CommandExecutor {
                 sender.sendMessage("§7[§e" + index + "/" + queue.size() + "§7] 已保存: §f" + safeName);
 
             } catch (Exception e) {
-                sender.sendMessage("§c保存失败: " + arena.getName());
+                sender.sendMessage("§cError saving: " + arena.getName());
                 plugin.getLogger().warning("Error saving " + arena.getName() + ": " + e.toString());
                 e.printStackTrace();
                 fail++;
@@ -122,31 +127,18 @@ public class ArenaSaver implements CommandExecutor {
     private void saveSchematic(WorldEditPlugin we, Location l1, Location l2, File file) throws Exception {
         BukkitWorld weWorld = new BukkitWorld(l1.getWorld());
 
-        // 1. 计算真正的边界 Min/Max
         Vector min = new Vector(Math.min(l1.getBlockX(), l2.getBlockX()), Math.min(l1.getBlockY(), l2.getBlockY()), Math.min(l1.getBlockZ(), l2.getBlockZ()));
         Vector max = new Vector(Math.max(l1.getBlockX(), l2.getBlockX()), Math.max(l1.getBlockY(), l2.getBlockY()), Math.max(l1.getBlockZ(), l2.getBlockZ()));
         Vector size = max.subtract(min).add(1, 1, 1);
 
         EditSession session = we.getWorldEdit().getEditSessionFactory().getEditSession(weWorld, -1);
 
-        // --- 核心修正点 START ---
-
-        // 步骤 A: 必须使用 min 作为 origin 来创建 clipboard
-        // 这样 copy() 才会去读取竞技场实际范围内的方块 (而不是去读 Loc1 旁边偏移的方块)
         CuboidClipboard clipboard = new CuboidClipboard(size, min);
         clipboard.copy(session); // 读取数据
 
-        // 步骤 B: 重新校准 Offset
-        // 我们在粘贴时使用的是 arena.getLoc1()。
-        // 所以我们必须把 offset 设为 (Min - Loc1)。
-        // 这样当粘贴在 Loc1 时：实际位置 = Loc1 + Offset = Loc1 + (Min - Loc1) = Min。
-        // 这样方块就会严丝合缝地回到原来的 Min 位置。
         Vector loc1Vec = new Vector(l1.getBlockX(), l1.getBlockY(), l1.getBlockZ());
         clipboard.setOffset(min.subtract(loc1Vec));
 
-        // --- 核心修正点 END ---
-
-        // 强制使用 MCEDIT 格式保存
         SchematicFormat format = SchematicFormat.getFormat("schematic");
         if (format == null) format = SchematicFormat.MCEDIT;
 

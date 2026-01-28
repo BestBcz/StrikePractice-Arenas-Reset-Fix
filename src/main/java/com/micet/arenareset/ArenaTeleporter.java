@@ -21,20 +21,20 @@ public class ArenaTeleporter implements CommandExecutor {
         // 获取竞技场
         Arena arena = StrikePractice.getAPI().getArena(arenaName);
         if (arena == null) {
-            p.sendMessage(ChatColor.RED + "找不到竞技场: " + arenaName);
+            p.sendMessage(ChatColor.RED + "Can't Found Arena: " + arenaName);
             return true;
         }
 
         Location loc1 = arena.getLoc1();
         if (loc1 == null) {
-            p.sendMessage(ChatColor.RED + "该竞技场没有 Loc1 数据！");
+            p.sendMessage(ChatColor.RED + "This arena not have Loc1 data！");
             return true;
         }
 
         // 传送到 Loc1
         p.teleport(loc1);
-        p.sendMessage(ChatColor.GREEN + "已传送至 " + arenaName + " 的 Loc1 (锚点)。");
-        p.sendMessage(ChatColor.YELLOW + "请站在这里不要动，选区后输入 //copy 然后 //schem save " + arenaName);
+        p.sendMessage(ChatColor.GREEN + "Already teleported to " + arenaName + " 的 Loc1 (锚点)。");
+        p.sendMessage(ChatColor.YELLOW + "Don't Move!，Type //copy after use WE to set pos1 and pos2 ,then use //schem save " + arenaName);
 
         return true;
     }
